@@ -1,6 +1,6 @@
 {
   "deploy": {
-    "project": "xuetong-proxy",
+    "project": "wakeproxy",
     "entrypoint": "main.ts",
     "exclude": [
       ".env",
