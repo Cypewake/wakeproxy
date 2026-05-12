@@ -254,4 +254,5 @@ console.log(`Supabase URL: ${SUPABASE_URL}`);
 console.log(`API 密钥已设置`);
 console.log(`限流：${RATE_LIMIT} 次/分钟`);
 
-serve(handleRequest, { port: 8000 });
+// Deno Deploy 会自动管理端口，不需要指定
+serve(handleRequest);
