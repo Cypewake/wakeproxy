@@ -7,10 +7,8 @@
  * 3. 添加请求验证和限流
  * 
  * 部署命令：
- * deployctl deploy --project=xuetong-proxy --env-file=.env main.ts
+ * deployctl deploy --project=wakeproxy --env-file=.env main.ts
  */
-
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 // ===== 配置 =====
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -254,5 +252,5 @@ console.log(`Supabase URL: ${SUPABASE_URL}`);
 console.log(`API 密钥已设置`);
 console.log(`限流：${RATE_LIMIT} 次/分钟`);
 
-// Deno Deploy 会自动管理端口，不需要指定
-serve(handleRequest);
+// 使用 Deno 内置的 serve API（兼容 Deno Deploy）
+Deno.serve(handleRequest);
