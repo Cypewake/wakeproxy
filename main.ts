@@ -95,6 +95,28 @@ function asInt(v: unknown, defaultVal = 0): number {
   return Number.isFinite(n) ? n : defaultVal;
 }
 
+// 取正整数（用于 count/total/tier/bonus 等业务数量字段，禁止负数和零除某些场景）
+function asPositiveInt(v: unknown, defaultVal = 1, max = 100000): number {
+  const n = asInt(v, defaultVal);
+  if (n < 1) return defaultVal;
+  if (n > max) return max;
+  return n;
+}
+
+function asNonNegativeInt(v: unknown, defaultVal = 0, max = 100000): number {
+  const n = asInt(v, defaultVal);
+  if (n < 0) return 0;
+  if (n > max) return max;
+  return n;
+}
+
+// 防止超长字符串攻击
+const MAX_STRING_LEN = 512;
+function asBoundedString(v: unknown, maxLen = MAX_STRING_LEN): string {
+  const s = asString(v);
+  return s.length > maxLen ? s.substring(0, maxLen) : s;
+}
+
 function requireField(body: Record<string, unknown>, ...fields: string[]): string | null {
   for (const f of fields) {
     const v = body[f];
@@ -153,24 +175,25 @@ const routes: Record<string, Handler> = {
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
     const result = await callSupabaseRpc("activate_card", {
-      p_card_hash: asString(body.card_hash),
-      p_card_plain: asString(body.card_plain),
-      p_device_fingerprint: asString(body.device_fingerprint),
-      p_total: asInt(body.total),
-      p_tier: asInt(body.tier),
+      p_card_hash: asBoundedString(body.card_hash),
+      p_card_plain: asBoundedString(body.card_plain),
+      p_device_fingerprint: asBoundedString(body.device_fingerprint),
+      p_total: asNonNegativeInt(body.total),
+      p_tier: asNonNegativeInt(body.tier),
     });
     return jsonResponse({ success: true, data: result });
   },
 
-  // 消耗答题次数
+  // 消耗答题次数（必须为正整数，防止负数刷次数）
   "/api/consume": async (body) => {
     const err = requireField(body, "card_hash", "device_fingerprint");
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
+    const count = asPositiveInt(body.count, 1, 1000);
     const result = await callSupabaseRpc("consume_usage", {
-      p_card_hash: asString(body.card_hash),
-      p_device_fingerprint: asString(body.device_fingerprint),
-      p_count: asInt(body.count, 1),
+      p_card_hash: asBoundedString(body.card_hash),
+      p_device_fingerprint: asBoundedString(body.device_fingerprint),
+      p_count: count,
     });
     return jsonResponse({ success: true, data: result });
   },
@@ -181,20 +204,29 @@ const routes: Record<string, Handler> = {
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
     const result = await callSupabaseRpc("get_card_remaining", {
-      p_card_hash: asString(body.card_hash),
+      p_card_hash: asBoundedString(body.card_hash),
     });
     return jsonResponse({ success: true, data: result });
   },
 
-  // 兑换邀请码
+  // 兑换邀请码（增加业务校验：检查 RPC 返回是否真正成功）
   "/api/redeem-invite": async (body) => {
     const err = requireField(body, "invite_code", "device_fingerprint");
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
+    const inviteCode = asBoundedString(body.invite_code, 64);
+    // 邀请码格式校验：至少 6 字符，只允许字母数字
+    if (inviteCode.length < 6 || !/^[A-Za-z0-9_-]+$/.test(inviteCode)) {
+      return jsonResponse({
+        success: true,
+        data: [{ success: false, message: "邀请码格式无效", bonus: 0 }],
+      });
+    }
+
     const result = await callSupabaseRpc("redeem_invite_code", {
-      p_invite_code: asString(body.invite_code),
-      p_device_fingerprint: asString(body.device_fingerprint),
-      p_bonus: asInt(body.bonus),
+      p_invite_code: inviteCode,
+      p_device_fingerprint: asBoundedString(body.device_fingerprint),
+      p_bonus: asNonNegativeInt(body.bonus, 0, 1000),
     });
     return jsonResponse({ success: true, data: result });
   },
@@ -205,8 +237,8 @@ const routes: Record<string, Handler> = {
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
     const result = await callSupabaseRpc("register_invite_code", {
-      p_invite_code: asString(body.invite_code),
-      p_device_fingerprint: asString(body.device_fingerprint),
+      p_invite_code: asBoundedString(body.invite_code, 64),
+      p_device_fingerprint: asBoundedString(body.device_fingerprint),
     });
     return jsonResponse({ success: true, data: result });
   },
@@ -217,7 +249,7 @@ const routes: Record<string, Handler> = {
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
     const result = await callSupabaseRpc("get_device_invite_code", {
-      p_device_fingerprint: asString(body.device_fingerprint),
+      p_device_fingerprint: asBoundedString(body.device_fingerprint),
     });
     return jsonResponse({ success: true, data: result });
   },
@@ -238,7 +270,7 @@ async function handleRequest(request: Request): Promise<Response> {
     return jsonResponse({
       success: true,
       service: "wakeproxy",
-      version: "1.1.0",
+      version: "1.2.0",
       time: new Date().toISOString(),
     });
   }
