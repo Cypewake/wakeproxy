@@ -184,16 +184,16 @@ const routes: Record<string, Handler> = {
     return jsonResponse({ success: true, data: result });
   },
 
-  // 消耗答题次数（必须为正整数，防止负数刷次数）
+  // 消耗答题次数（安全修复：强制 count=1，防止恶意批量扣减）
   "/api/consume": async (body) => {
     const err = requireField(body, "card_hash", "device_fingerprint");
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
-    const count = asPositiveInt(body.count, 1, 1000);
+    // 安全修复：忽略客户端传入的 count，强制为 1
     const result = await callSupabaseRpc("consume_usage", {
       p_card_hash: asBoundedString(body.card_hash),
       p_device_fingerprint: asBoundedString(body.device_fingerprint),
-      p_count: count,
+      p_count: 1,
     });
     return jsonResponse({ success: true, data: result });
   },
