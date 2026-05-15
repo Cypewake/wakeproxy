@@ -198,6 +198,18 @@ const routes: Record<string, Handler> = {
     return jsonResponse({ success: true, data: result });
   },
 
+  // 验证答题权限并消耗次数（防本地破解：先本地后云端）
+  "/api/verify-answer": async (body) => {
+    const err = requireField(body, "card_hash", "device_fingerprint");
+    if (err) return jsonResponse({ success: false, error: err }, 400);
+
+    const result = await callSupabaseRpc("verify_and_consume", {
+      p_card_hash: asBoundedString(body.card_hash),
+      p_device_fingerprint: asBoundedString(body.device_fingerprint),
+    });
+    return jsonResponse({ success: true, data: result });
+  },
+
   // 获取剩余次数
   "/api/get-remaining": async (body) => {
     const err = requireField(body, "card_hash");
