@@ -198,12 +198,12 @@ const routes: Record<string, Handler> = {
     return jsonResponse({ success: true, data: result });
   },
 
-  // 验证答题权限并消耗次数（防本地破解：先本地后云端）
+  // 验证答题权限（只读验证，不扣次数：本地已扣减，云端只确认次数是否充足）
   "/api/verify-answer": async (body) => {
     const err = requireField(body, "card_hash", "device_fingerprint");
     if (err) return jsonResponse({ success: false, error: err }, 400);
 
-    const result = await callSupabaseRpc("verify_and_consume", {
+    const result = await callSupabaseRpc("verify_answer", {
       p_card_hash: asBoundedString(body.card_hash),
       p_device_fingerprint: asBoundedString(body.device_fingerprint),
     });
