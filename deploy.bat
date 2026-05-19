@@ -48,7 +48,7 @@ echo.
 
 echo [4/4] 开始部署到 Deno Deploy...
 echo.
-deployctl deploy --project=xuetong-proxy --env-file=.env
+deployctl deploy --project=wakeproxy --env-file=.env
 
 if %errorlevel% equ 0 (
     echo.

@@ -1,0 +1,28 @@
+name: Deploy to Deno Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Deno Deploy
+        uses: denoland/deployctl@v1
+        with:
+          project: wakeproxy
+          entrypoint: main.ts
+          # 环境变量通过 Deno Deploy 控制台配置（https://console.deno.com/cypewake/wakeproxy）
+          production: true
+          # GitHub 仓库: https://github.com/Cypewake/wakeproxy
